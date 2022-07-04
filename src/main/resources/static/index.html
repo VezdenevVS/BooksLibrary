@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Библиотека</title>
+    <style>
+
+    </style>
+    <!-- jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script>
+        const getAPIUrl = (path) => {
+            return document.location.origin + (path.startsWith('/') ? path : '/' + path);
+        }
+
+        const request = (api, method, data) => {
+            let params = {contentType: 'application/json;charset=UTF-8'};
+            if (method) {
+                params.method = method;
+            }
+            if (data) {
+                params.data = typeof data === 'string' ? data : JSON.stringify(data);
+            }
+
+            return $.ajax(getAPIUrl(api), params);
+        }
+
+        let authorModal;
+        let bookModal;
+
+        const deleteBook = (bookId) => {
+            if (bookId) {
+                request('/book/' + bookId, 'DELETE')
+                    .done(data => {
+                        if (bookModal) {
+                            bookModal.hide();
+                        }
+                    });
+            }
+        }
+
+        const deleteAuthor = (authorId) => {
+            if (authorId) {
+                request('/author/' + authorId, 'DELETE')
+                    .done(data => {
+                        if (authorModal) {
+                            authorModal.hide();
+                        }
+                    });
+            }
+        }
+
+        const fillRows = (list, rows, rowTemplate, filler) => {
+            if (!Array.isArray(rows) || !rowTemplate)
+                return;
+
+            let row;
+            let data;
+            for (let i = 0; i < rows.length; i++) {
+                data = rows[i];
+
+                row = list.children[i];
+                if (!row) {
+                    row = rowTemplate.cloneNode(true);
+                    row.style = '';
+                    list.append(row);
+                }
+
+                filler(row, data);
+            }
+
+            list.children.length = rows.length;
+        }
+
+        const updateAuthorList = () => {
+            let list = document.getElementById('authorsList');
+            if (!list) {
+                return;
+            }
+            request('/author/all')
+                .done(authors => {
+                    fillRows(list, authors, document.getElementById('authorRowTemplate'), (row, data) => {
+                        row.children[0].textContent = data.name;
+
+                        let actions = row.children[1];
+                        actions.children[0].setAttribute('data-bs-author-id', data.id);
+                        actions.children[1].onclick = () => deleteAuthor(data.id);
+                    });
+                });
+        }
+
+        const updateBookList = () => {
+            let list = document.getElementById('booksList');
+            if (!list) {
+                return;
+            }
+            request('/book/all')
+                .done(books => {
+                    fillRows(list, books, document.getElementById('bookRowTemplate'), (row, data) => {
+                        row.children[0].textContent = data.label;
+                        row.children[1].textContent = data.author;
+                        row.children[2].textContent = new Date(data.releaseAt).toLocaleDateString();
+                        row.children[3].textContent = data.catalog;
+
+                        let actions = row.children[4];
+                        actions.children[0].setAttribute('data-bs-book-id', data.id);
+                        actions.children[1].onclick = () => deleteBook(data.id);
+                    });
+                });
+
+        }
+
+        const setSelected = (options, value) => {
+            if (!options) {
+                return;
+            }
+            if (!value) {
+                options.selectedIndex = 0;
+            }
+            let length = options.options.length;
+            for (let i = 1; i < length; i++) {
+                let option = options.options[i];
+                if (option && option.value === String(value)) {
+                    options.selectedIndex = option.index;
+                    break;
+                }
+            }
+        }
+
+        const fillOptions = (options, list, labelExtractor) => {
+            if (!options) {
+                return;
+            }
+            for (let i = 0; i < list.length; i++) {
+                let option = options.options ? options.options[i] : undefined
+                if (!option) {
+                    option = document.createElement("option");
+                    options.append(option);
+                }
+                let data = list[i];
+
+                option.value = data.id;
+                option.textContent = labelExtractor(data);
+            }
+            options.options.length = list.length;
+        }
+
+        const init = () => {
+            authorModal = document.getElementById('authorModal');
+            authorModal.addEventListener('show.bs.modal', function (event) {
+                let button = event.relatedTarget;
+                let authorId = button.getAttribute('data-bs-author-id');
+
+                let header = authorModal.querySelector('.modal-title');
+                if (header) {
+                    header.textContent = authorId ? 'Изменение данных автора' : 'Добавление автора';
+                }
+
+                let authorName = document.getElementById('authorName');
+                if (authorId) {
+                    request('/author/' + authorId)
+                        .done(data => {
+                            if (authorName) {
+                                authorName.value = data.name;
+                            }
+                            if (authorModal) {
+                                authorModal.setAttribute('data-bs-author-id', data.id);
+                            }
+                        });
+                } else {
+                    if (authorName) {
+                        authorName.value = '';
+                    }
+                    if (authorModal) {
+                        authorModal.removeAttribute('data-bs-author-id');
+                    }
+                }
+            });
+
+            bookModal = document.getElementById('bookModal');
+            bookModal.addEventListener('show.bs.modal', function (event) {
+                let button = event.relatedTarget;
+                let bookId = button.getAttribute('data-bs-book-id');
+
+                let header = bookModal.querySelector('.modal-title');
+                if (header) {
+                    header.textContent = bookId ? 'Изменение данных книги' : 'Добавление книги';
+                }
+
+                let bookAuthor = document.getElementById('bookAuthor');
+                if (bookAuthor) {
+                    request('/author/all')
+                        .done(data => {
+                            if (!Array.isArray(data)) {
+                                return;
+                            }
+                            fillOptions(bookAuthor, data, author => author.name);
+                        });
+                }
+
+                let bookCatalog = document.getElementById('bookCatalog');
+                if (bookCatalog) {
+                    request('/catalog/all').done(data => {
+                        if (!Array.isArray(data)) {
+                            return;
+                        }
+                        fillOptions(bookCatalog, data, catalog => catalog.label);
+                    });
+                }
+
+                let bookLabel = document.getElementById('bookLabel');
+                let bookDate = document.getElementById('bookDate');
+                if (bookId) {
+                    request('/book/' + bookId)
+                        .done(data => {
+                            if (bookLabel) {
+                                bookLabel.value = data.label;
+                            }
+                            setSelected(bookAuthor, data.authorId);
+                            setSelected(bookCatalog, data.catalogId);
+                            if (bookDate) {
+                                bookDate.value = new Date(data.releaseAt).toLocaleDateString("fr-CA");
+                            }
+                            if (bookModal) {
+                                bookModal.setAttribute('data-bs-book-id', data.id);
+                            }
+                        });
+                } else {
+                    if (bookModal) {
+                        bookModal.removeAttribute('data-bs-book-id');
+                    }
+                    if (bookLabel) {
+                        bookLabel.value = '';
+                    }
+                    if (bookDate) {
+                        bookDate.value = '';
+                    }
+                    setSelected(bookAuthor);
+                    setSelected(bookCatalog);
+                }
+
+            });
+
+            updateBookList();
+            updateAuthorList();
+        }
+
+        const saveAuthor = () => {
+            let name = document.getElementById('authorName');
+            if (name && name.value) {
+                let authorId = authorModal ? authorModal.getAttribute('data-bs-author-id') : undefined;
+                let response;
+                if (authorId) {
+                    response = request('/author/' + authorId, 'PUT', {name: name.value});
+                } else {
+                    response = request('/author/add', 'POST', {name: name.value});
+                }
+                response.done(result => {
+                    let modal = new bootstrap.Modal(authorModal, {keyboard: false});
+                    if (modal) {
+                        modal.hide();
+                    }
+                    updateAuthorList();
+                    updateBookList();
+                });
+            }
+        }
+
+        const saveBook = () => {
+            let bookId = bookModal ? bookModal.getAttribute('data-bs-book-id') : undefined;
+
+            let label = document.getElementById('bookLabel');
+            label = label ? label.value : undefined;
+            if (!label) {
+                return; // todo выводить ошибку
+            }
+            let author = document.getElementById('bookAuthor');
+            author = author && author.options && author.options[author.selectedIndex] ? author.options[author.selectedIndex].value : undefined;
+            if (!author) {
+                return; // todo выводить ошибку
+            }
+            let catalog = document.getElementById('bookCatalog');
+            catalog = catalog && catalog.options && catalog.options[catalog.selectedIndex] ? catalog.options[catalog.selectedIndex].value : undefined;
+            if (!catalog) {
+                return; // todo выводить ошибку
+            }
+            let date = document.getElementById('bookDate');
+            date = date && date.valueAsDate ? date.valueAsDate.getTime() : undefined;
+            if (!date) {
+                return; // todo выводить ошибку
+            }
+
+            let data = {
+                label: label,
+                authorId: author,
+                catalogId: catalog,
+                releaseAt: date,
+            }
+
+            let response;
+            if (bookId) {
+                response = request('/book/' + bookId, 'PUT', data);
+            } else {
+                response = request('/book/add', 'POST', data);
+            }
+
+            response.done(result => {
+                let modal = new bootstrap.Modal(bookModal, {keyboard: false});
+                if (modal) {
+                    modal.hide();
+                }
+                updateBookList();
+                updateAuthorList();
+            })
+
+        }
+    </script>
+</head>
+<body onload="init()">
+    <div class="container-md my-5">
+        <button type="button" class="btn btn-primary mx-1" data-bs-toggle="modal" data-bs-target="#bookModal">
+            Добавить книгу
+        </button>
+        <button type="button" class="btn btn-primary mx-1" data-bs-toggle="modal" data-bs-target="#authorModal">
+            Добавить автора
+        </button>
+
+        <div class="container-md my-5">
+
+            <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pills-books-tab" data-bs-toggle="pill" data-bs-target="#pills-books" type="button" role="tab" aria-controls="pills-books" aria-selected="true">Книги</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-authors-tab" data-bs-toggle="pill" data-bs-target="#pills-authors" type="button" role="tab" aria-controls="pills-authors" aria-selected="false">Авторы</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade show active" id="pills-books" role="tabpanel" aria-labelledby="pills-books-tab">
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th scope="col">Название</th>
+                            <th scope="col">Автор</th>
+                            <th scope="col">Дата публикации</th>
+                            <th scope="col">Каталог</th>
+                            <th scope="col"></th>
+                        </tr>
+                        <tr id="bookRowTemplate" style="display: none">
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>
+                                <button class="btn" data-bs-toggle="modal" data-bs-target="#bookModal" >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                        <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
+                                        <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        </thead>
+                        <tbody id="booksList" >
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tab-pane fade" id="pills-authors" role="tabpanel" aria-labelledby="pills-authors-tab">
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th scope="col">Имя</th>
+                            <th scope="col"></th>
+                        </tr>
+                        <tr id="authorRowTemplate" style="display: none">
+                            <td></td>
+                            <td>
+                                <button class="btn" data-bs-toggle="modal" data-bs-target="#authorModal" >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                        <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
+                                        <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        </thead>
+                        <tbody id="authorsList" >
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" id="authorModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавление автора</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="authorName" class="form-label" >ФИО автора</label>
+                        <input type="text" class="form-control" id="authorName" placeholder="Введите ФИО">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" onclick="saveAuthor()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" id="bookModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавление книги</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bookCatalog" class="form-label" >Каталог</label>
+                        <select class="form-select" id="bookCatalog" ></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bookLabel" class="form-label" >Название книги</label>
+                        <input type="text" class="form-control" id="bookLabel" placeholder="Введите название">
+                    </div>
+                    <div class="mb-3">
+                        <label for="bookAuthor" class="form-label" >Автор</label>
+                        <select class="form-select" id="bookAuthor" ></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bookDate" class="form-label" >Дата публикации</label>
+                        <input type="date" class="form-control" id="bookDate" placeholder="Введите название">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" onclick="saveBook()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
