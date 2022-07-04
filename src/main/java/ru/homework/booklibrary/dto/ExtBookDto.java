@@ -3,6 +3,7 @@ package ru.homework.booklibrary.dto;
 import lombok.*;
 import ru.homework.booklibrary.dao.entities.Book;
 
+@NoArgsConstructor
 @NonNull
 @Getter
 @Setter
@@ -15,5 +16,9 @@ public class ExtBookDto extends BookDto {
 
     public ExtBookDto(Book book) {
         super(book);
+        if (book.getAuthor() != null)
+            setAuthorId(book.getAuthor().getId());
+        if (book.getCatalog() != null)
+            setAuthorId(book.getCatalog().getId());
     }
 }

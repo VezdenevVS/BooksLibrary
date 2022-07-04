@@ -17,6 +17,7 @@ import ru.homework.booklibrary.services.interfaces.CatalogService;
 import javax.persistence.EntityNotFoundException;
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.LongFunction;
@@ -48,8 +49,8 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
-    public BookDto getBook(Long bookId) {
-        return new BookDto(getBookById(bookId));
+    public ExtBookDto getBook(Long bookId) {
+        return new ExtBookDto(getBookById(bookId));
     }
 
     @Override
@@ -61,6 +62,7 @@ public class BookServiceImpl implements BookService {
     public List<BookDto> getBooks() {
         List<BookDto> books = new ArrayList<>();
         booksRepository.findAll().forEach(book -> books.add(new BookDto(book)));
+        books.sort(Comparator.comparing(BookDto::getLabel));
         return books;
     }
 
@@ -71,7 +73,7 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public BookDto updateBook(@NonNull ExtBookDto bookDto) {
-        return createOrUpdate(bookDto, getBookById(bookDto.getId()));
+        return createOrUpdate(bookDto, getBookById(Long.valueOf(bookDto.getId())));
     }
 
     private BookDto createOrUpdate(@NonNull ExtBookDto bookDto, @NonNull Book book) {

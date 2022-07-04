@@ -26,12 +26,12 @@ public class BooksController {
     }
 
     @GetMapping("{bookId}")
-    public BookDto getBook(@PathVariable Long bookId) {
+    public ExtBookDto getBook(@PathVariable Long bookId) {
         return bookService.getBook(bookId);
     }
 
     @PutMapping("{bookId}")
-    public BookDto updateBook(@PathVariable Long bookId, @RequestBody ExtBookDto bookDto) {
+    public BookDto updateBook(@PathVariable String bookId, @RequestBody ExtBookDto bookDto) {
         bookDto.setId(bookId);
         return bookService.updateBook(bookDto);
     }

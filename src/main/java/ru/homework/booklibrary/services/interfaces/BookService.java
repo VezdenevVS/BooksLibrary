@@ -15,7 +15,7 @@ public interface BookService {
 
     void deleteBook(Long bookId);
 
-    BookDto getBook(Long bookId);
+    ExtBookDto getBook(Long bookId);
 
     Book getBookById(Long bookId);
 

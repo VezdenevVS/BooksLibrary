@@ -1,11 +1,9 @@
 package ru.homework.booklibrary.dto;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import ru.homework.booklibrary.dao.entities.Book;
 
+@NoArgsConstructor
 @Getter
 @Setter
 @ToString(callSuper = true)

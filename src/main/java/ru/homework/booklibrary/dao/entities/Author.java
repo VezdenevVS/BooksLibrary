@@ -21,7 +21,7 @@ public class Author extends BasicEntity {
     private String name;
 
     @ToString.Exclude
-    @OneToMany(mappedBy = "author", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "author", fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.REMOVE)
     private Set<Book> books = new LinkedHashSet<>();
 
 }
